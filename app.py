@@ -8,15 +8,17 @@ import requests
 from flask import send_file
 import os
 import flask
-import test as sc
 from flask_mysqldb import MySQL
 import MySQLdb.cursors
-import cli as resumeextraction
 import csv
+from itertools import chain
+
+import cli as resumeextraction
+import test as sc
 import Prediction as pre
 import scorecalc as sc
 import ms as mail
-from itertools import chain
+
 
 app = Flask(__name__)
 UPLOAD_FOLDER = './resume'
@@ -43,6 +45,7 @@ def hello():
 @app.route("/sendsms") 
 def sendsms():
         ids=[]
+        selectedList=[]
         jobtitle=session.get('jobtitle')
         requiredskills=session.get('skills')
         tskills=session.get('tskills')
@@ -51,26 +54,32 @@ def sendsms():
         
         cursor=mysql.connection.cursor(MySQLdb.cursors.DictCursor)
         #executing query
-        cursor.execute("select * from resu where score !=0 order by score desc limit 10")
+        cursor.execute("select * from resu where score !=0 order by score desc")
         #fetching all records from database
         data=cursor.fetchall()
+        i=0
+
         for row in data:
-           print("row=",row)
-           
-           mobile=row['mono']
-           pname=row['pname']
-           email=row['email']
-           
-           ids.append(row['id'])
-           #fname.append(row['sys_fname'])
-           url = "https://www.fast2sms.com/dev/bulk"
-           print("Selected Mobile Number==",mobile)
-           msg="Dear "+pname+"Your Resume is shortlisted for Interview"+jobtitle
-           payload = "sender_id=FSTSMS&message="+msg+"&language=english&route=p&numbers="+mobile
-           headers = {'authorization':"6fXPjBRsFTnAaHytmqxepiQ2ZIKulJYgS043voz5UWLNMwhrCO8oAim6ZkTD1nyBcNS4MugqH3Qa95Yx",'Content-Type': "application/x-www-form-urlencoded",'Cache-Control': "no-cache",}
-           response = requests.request("POST", url, data=payload, headers=headers)
-           print(response.text)
-           mail.process(email,msg)
+                if i==int(novc):
+                        break
+                else:
+                        
+                        print("row=",row)
+                        mobile=row['mono']
+                        pname=row['pname']
+                        email=row['email']
+                        ids.append(row['id'])
+                        url = "https://www.fast2sms.com/dev/bulk"
+                        print("Selected Mobile Number==",mobile)
+                        msg="Dear "+pname+"Your Resume is shortlisted for Interview "+jobtitle
+                        payload = "sender_id=FSTSMS&message="+msg+"&language=english&route=p&numbers="+mobile
+                        headers = {'authorization':"6fXPjBRsFTnAaHytmqxepiQ2ZIKulJYgS043voz5UWLNMwhrCO8oAim6ZkTD1nyBcNS4MugqH3Qa95Yx",'Content-Type': "application/x-www-form-urlencoded",'Cache-Control': "no-cache",}
+                        response = requests.request("POST", url, data=payload, headers=headers)
+                        print(response.text)
+                        mail.process(email,msg)
+                        selectedList.append(pname)
+                        i=i+1
+
         #rfname=[]
         cursor1=mysql.connection.cursor(MySQLdb.cursors.DictCursor)
         #executing query
@@ -88,7 +97,7 @@ def sendsms():
                         email1=row1['email']
                         url1 = "https://www.fast2sms.com/dev/bulk"
                         print("Reject Mobile number==",mobile1)
-                        msg1="Dear "+pname1+"Your Resume is Rejected  for Interview "+jobtitle+"You need to improve in "+requiredskills
+                        msg1="Dear "+pname1+" Your Resume is Rejected  for Interview "+jobtitle+" You need to improve in "+requiredskills
                         payload1 = "sender_id=FSTSMS&message="+msg1+"&language=english&route=p&numbers="+mobile1
                         headers1 = {'authorization':"6fXPjBRsFTnAaHytmqxepiQ2ZIKulJYgS043voz5UWLNMwhrCO8oAim6ZkTD1nyBcNS4MugqH3Qa95Yx",'Content-Type': "application/x-www-form-urlencoded",'Cache-Control': "no-cache",}
                         response1 = requests.request("POST", url1, data=payload1, headers=headers1)
@@ -215,10 +224,13 @@ def addextract():
         print("resumes_data==",resumes_data)
         print("filename==",fname)
         cursor=mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+
         #executing query
-        cursor.execute("select * from resu order by score desc")
+        cursor.execute("select * from resu order by score desc ")
+        
         #fetching all records from database
         data=cursor.fetchall()
+        #data=cursor.fetchmany(noofvac)
         return render_template("shortlist.html",data=data) 
         
         
@@ -243,7 +255,7 @@ def rupload():
                     #path=uname
                     pathlib.Path(app.config['UPLOAD_FOLDER']).mkdir(exist_ok=True)
                     file.save(os.path.join(app.config['UPLOAD_FOLDER'],filename))
-                    return render_template('upload.html',message="Uploaded Successfully")
+                    return render_template('upload.html',message="Upload successful")
 @app.route('/rbupload', methods=['GET','POST'])
 def uploadbulk():
         if flask.request.method == "POST":
@@ -255,10 +267,10 @@ def uploadbulk():
                                 pathlib.Path(app.config['UPLOAD_FOLDER']).mkdir(exist_ok=True)
                                 file.save(os.path.join(app.config['UPLOAD_FOLDER'],filename))
                         else:
-                                return render_template('uploadbulk.html',message="Uploaded Failed")
-                return render_template('uploadbulk.html',message="Uploaded Success")
+                                return render_template('uploadbulk.html',message="Upload failed")
+                return render_template('uploadbulk.html',message="Upload successful")
         else:
-                return render_template('uploadbulk.html',message="Uploaded Failed")
+                return render_template('uploadbulk.html',message="Upload failed")
 
 
         
@@ -278,7 +290,7 @@ def usignin():
                 session['cname']=request.form['uname']
                 return render_template("uhome.html")
         else:
-                return render_template("ulogin.html",message="Invalid UserName or Password")
+                return render_template("ulogin.html",message="Invalid userName or password")
 
 @app.route("/rsignin",methods=['POST']) 
 def rsignin():
@@ -289,9 +301,9 @@ def rsignin():
                         session['uname']=request.form['uname']
                         return render_template("rhome.html")
                 else:
-                        return render_template("rlogin.html",message="Invalid Password")
+                        return render_template("rlogin.html",message="Invalid password")
         else:
-                return render_template("rlogin.html",message="Invalid UserName")
+                return render_template("rlogin.html",message="Invalid userName")
 
 @app.route("/usignup",methods=['POST']) 
 def usignup():
@@ -309,16 +321,16 @@ def usignup():
         for row in cursor:
                 isRecordExist=1
         if(isRecordExist==1):
-                print("Username Already Exists")
-                return render_template("ureg.html",message="Username or email Already Exists")
+                print("Username already exists")
+                return render_template("ureg.html",message="Username already exists")
         else:
                 print("insert")
                 cmd="INSERT INTO user(name,uname,pass,email,mono,addr) Values('"+str(name)+"','"+str(uname)+"','"+str(passw)+"','"+str(email)+"','"+str(mobile)+"','"+addr+"')"
                 print(cmd)
-                print("Inserted Successfully")
+                print("Inserted successfully")
                 conn.execute(cmd)
                 mydb.commit()
-                return render_template("ulogin.html",message="Inserted SuccesFully")
+                return render_template("ulogin.html",message="Registered successfully")
 
 @app.route("/logout")
 def log_out():

@@ -10,7 +10,7 @@ def process(remail,msg):
     s.starttls()
 
     # Authentication
-    s.login("recruitmentportalbit2022@gmail.com", "bitportal22")
+    s.login("recruitmentportalbit2022@gmail.com", "tfuqwgcbsuwrrcgr")
 
     # message to be sent
     message = msg
